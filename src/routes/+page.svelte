@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
+
 	import EurasiaMap from '$lib/EurasiaMap.svelte';
 	import WordCloud from '$lib/WordCloud.svelte';
 	import SentimentAnalysis from '$lib/SentimentAnalysis.svelte';
@@ -7,13 +9,31 @@
 
 	import { base } from '$app/paths';
 
-	const h2 = 200;
-	const w2 = 350;
+	const h2 = 220;
+	const w2 = 380;
 	const dark_purple = 'hsl(300deg, 90%, 40%)';
 	const purple_scheme = {
 		a: 'hsl(300deg, 90%, 80%)',
 		b: 'hsl(300deg, 90%, 30%)'
 	};
+
+	const hard_code_current_color = () => {
+		const texts = document.getElementsByTagName('text');
+		for (const t of texts) {
+			t.style.fill = window.getComputedStyle(t).fill;
+		}
+
+		const lines = document.getElementsByTagName('line');
+		for (const l of lines) {
+			l.style.stroke = window.getComputedStyle(l).stroke;
+		}
+
+		const svgs = document.getElementsByTagName('svg');
+		for (const s of svgs) {
+			s.style.background = window.getComputedStyle(s).background;
+		}
+	};
+	onMount(hard_code_current_color);
 </script>
 
 <article class="flex-column font-7-8">
@@ -26,12 +46,12 @@
 				unprepared.
 			</p>
 			<div class="column-2 gap-1 font-5-8">
-				Polygons represent countries. Turkey and Syria are marked dark red. Each circle for one
-				earthquake of magnitude ≥ 5. Hue represent magnitude. Hover on each earthquake to get a
-				pop-up card about its magnitude and time.
-				<br />
-				Drag, scroll, and pinch to pan and zoom the map. Hover on the bottom right of the map to unhide
-				the time slider. Drag the slider to choose the beginning year of the time interval.
+				Earthquake data around Turkey of magnitude ≥ 5 since 2000 retrieved from United States
+				Geological Survey (USGS). Polygons represent countries. Turkey and Syria are marked dark
+				red. Each circle represents one earthquake. Hue indicates magnitude. Hover over each
+				earthquake for its magnitude and time. Drag, scroll, and pinch to pan and zoom the map.
+				Hover over the bottom right of the map to unhide the time slider. Drag the slider to choose
+				the beginning year of the time interval.
 			</div>
 		</div>
 
@@ -53,36 +73,36 @@
 	<div class="column-2 gap-1">
 		<div class="flex-column justify-between">
 			<div class="flex-item">
-				<p>▼ Frequent subwords in Tweets. Rescue is common theme.</p>
+				<p>▼ Word Cloud From Tweets. Rescue is common theme.</p>
 				<p class="font-5-8">
 					Tweets Feb 6 ~ Feb 16 containing <em>Turkey earthquake</em> or
-					<em>#TurkeySyriaEarthquake</em>. Tokenized with Hugging Face tokenizer. Trivial subwords
-					and tag words ignored. Hover each subword to get a pop-up card about it and its number of
-					mentions. Hover on bottom to unhide slider. Slide to choose end of time interval.
+					<em>#TurkeySyriaEarthquake</em> scraped from Twitter using snscrape. Tokenized with a Hugging
+					Face tokenizer. Trivial subwords and tag words ignored. Hover over each subword to get a pop-up
+					card about it and its number of mentions. Hover over bottom to unhide slider. Slide to choose
+					end of time interval.
 				</p>
 				<WordCloud height={h2} width={w2} fill={dark_purple} />
 			</div>
 			<div class="flex-item">
 				<FrequencyMagnitudeHistogram height={h2} width={w2} fill={dark_purple} />
-				<p>▲ Frequency of Earthquakes by Magnitude from 2000 to Present</p>
+				<p>▲ Frequency of Earthquakes by Magnitude</p>
 				<p class="font-5-8">
-					Earthquakes of low magnitude are exponentially more common than earthquakes of high
-					magnitude. Though this analysis only includes earthquakes of magnitude 5.0 or greater, we
-					expect this correlation to continue. The devastating earthquake that struck Turkey was
-					truly a statistical anomaly.
+					Same earthquake data as the distribution map but with earthquakes around the globe. The
+					heights of the histogram bars represent the number of times an earthquake within the
+					magnitude range occurred. Hover over the bars to see the exact count of earthquakes in
+					each range.
 				</p>
 			</div>
 		</div>
 
 		<div class="flex-column justify-between">
 			<div class="flex-item">
-				<p>▼ Sentiment of Tweets Related to Turkey Earthquake Over Time</p>
+				<p>▼ Box Plot of Sentiment of Related Tweets</p>
 				<p class="font-5-8">
-					VADER Sentiment is calculated by summing up the sentiment score of each word in a tweet.
-					With 0 representing a neutral tweet, it is clear that discussion on twitter is primarily
-					negative. As the full extent of damage becomes apparent and criticism of the government’s
-					response begin, sentiments stay negative. Perhaps this is why the Turkish government
-					blocked Twitter?
+					Same data as the word cloud. Each box shows the distribution of sentiment (VADER) of
+					tweets for one day. Darker boxes represent a more negative average sentiment. It is clear
+					that sentiment becomes more negative as discussion shifts towards the earthquake response.
+					Hover over each box to view the sentiment details on that day.
 				</p>
 				<SentimentAnalysis height={h2} width={w2} scheme={purple_scheme} />
 			</div>
@@ -90,11 +110,10 @@
 				<Frequency height={h2} width={w2} stroke={dark_purple} />
 				<p>▲ Frequency of Tweets Related to Turkey Earthquake</p>
 				<p class="font-5-8">
-					Frequency of tweets containing “turkey earthquake” and “#TurkeySyriaEarthquake”. Before
-					the earthquake, baseline discussion of earthquakes was low. Though frequency of tweets
-					mentioning earthquake skyrocketed after the disaster struck, it quickly died down, perhaps
-					in part due to the Turkish government making the controversial decision to block Twitter
-					temporarily on February 8, 2023.
+					Same data as the word cloud. X axis represents time, Y axis represents number of tweets on
+					each particular day. Though frequency of tweets mentioning earthquake skyrocketed after
+					the disaster struck, it quickly died down. Hover over the line to see key points in the
+					timeline of the earthquake and subsequent response.
 				</p>
 			</div>
 		</div>
@@ -111,15 +130,10 @@
 
 <style>
 	article {
-		/* TODO: remove border when the layout is done. */
-		border-color: lightgray;
-		border-style: solid;
-		border-width: 2px;
-
 		background-color: hsl(45deg, 80%, 90%);
 		color: hsl(300deg, 100%, 15%);
 		font-family: 'PT Serif';
-		height: 29.7cm;
+		min-height: 29.7cm;
 		position: relative;
 		width: 21cm;
 	}
@@ -160,10 +174,8 @@
 	}
 
 	.authors {
-		bottom: 0;
 		font-size: 0.55rem;
-		position: absolute;
-		right: 0;
+        text-align: right;
 	}
 
 	.column-2 {

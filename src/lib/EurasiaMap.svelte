@@ -24,7 +24,7 @@
 	const filter_quakes = (begin: Date) => quakes.filter((q: Quake) => q.time > begin);
 
 	const width = 793;
-	const height = 250;
+	const height = 290;
 	const countries = ['Turkey', 'Syria'];
 	const pale_red_gray = 'hsl(0 30% 10%)';
 	const pale_green_gray = 'hsl(120deg 10% 10%)';
@@ -77,7 +77,7 @@
 	const projection = d3
 		.geoNaturalEarth1()
 		.scale((width * 3) / 4)
-		.translate([width / 5, height * 2.1]);
+		.translate([width / 5, height * 1.9]);
 
 	const color_scale = d3
 		.scaleLinear()
@@ -168,7 +168,7 @@
 	});
 </script>
 
-<svg bind:this={svg_node} {height} {width}>
+<svg bind:this={svg_node} {height} {width} xmlns="http://www.w3.org/2000/svg">
 	<defs>
 		<linearGradient id="eurasia-map-yellow-red-linear-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
 			<stop offset="0%" style="stop-color: hsl({normalize_mag(min_mag)}turn 100% 50%)" />

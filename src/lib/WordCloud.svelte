@@ -3,16 +3,29 @@
 	import { onMount } from 'svelte';
 	import * as d3 from 'd3';
 	import cloud from 'd3-cloud';
-	import { data } from '$lib/date_w_tokens.json';
+	import { sliderBottom } from 'd3-simple-slider';
+	import { data as raw } from '$lib/date_w_tokens.json';
 	import QuakeCard from '$lib/QuakeCard.svelte';
 
-	const blacklist =
-		/^((turkey)|(turki)|(syria)|(earthqua)|(http).*)|(that)|(those)|(than)|(from)|(this)|(will)|(with)|(have)|(been)|(were)|(they)|(them)|(their)|(your)|(for)|(the)|(and)|(you)|(who)|(are)|(her)|(our)|(has)|(amp)|(his)|(not)|(but)|(was)|(000)|(can)|(tur)|(tra)|(what)|(\[.*\])$/i;
+	type Tweet = {
+		Date: Date;
+		Tokens: string[];
+	};
 
-	const count_data = (data) => {
+	raw.forEach((d: any) => (d.Date = new Date(d.Date)));
+	// @ts-ignore
+	let data: Tweet[] = raw;
+
+	const blacklist =
+		/^((turkey)|(turki)|(syria)|(earthqua)|(http).*)|(that)|(those)|(than)|(from)|(this)|(will)|(with)|(have)|(been)|(were)|(they)|(them)|(their)|(your)|(for)|(the)|(and)|(you)|(who)|(are)|(she)|(her)|(our)|(has)|(amp)|(his)|(not)|(but)|(was)|(000)|(can)|(tur)|(tra)|(what)|(\[.*\])$/i;
+	// Count mentions given end date.
+	const count_till = (end: Date) => {
 		let counts = new Map();
 		for (const d_w_t of data) {
-			for (const tk of d_w_t['Tokens']) {
+			if (d_w_t.Date > end) {
+				continue;
+			}
+			for (const tk of d_w_t.Tokens) {
 				counts.set(tk, (counts.get(tk) || 0) + 1);
 			}
 		}
@@ -24,66 +37,108 @@
 			aggregated.push({ text: tk, count: cnt });
 		}
 		aggregated.sort((a, b) => b.count - a.count);
-		return aggregated;
+		return aggregated.slice(0, 50);
 	};
 
-	// set the dimensions and margins of the graph
 	export let width = 350;
 	export let height = 250;
 	export let fill = '#69b3a2';
 
-	let svg_node: SVGSVGElement;
+	let g_node: SVGGElement;
+	let slider_node: SVGGElement;
 	let card: QuakeCard;
+	let end_day = 18;
+	let slider_opacity = 0;
 
+	const card_follow = (mouse_event: MouseEvent) =>
+		card.config({
+			visible: true,
+			left: mouse_event.pageX,
+			top: mouse_event.pageY + 50
+		});
+	const card_follow_word = (mouse_event: MouseEvent, d: any) => {
+		console.log(d);
+		card_follow(mouse_event);
+		card.config({
+			title: d.text,
+			body: `${d.count} mentions`
+		});
+	};
+	const card_follow_slider = (mouse_event: MouseEvent) => {
+		slider_opacity = 1;
+		card_follow(mouse_event);
+		card.config({
+			title: `Until Feb ${end_day}`,
+			fill: 'white',
+			body: 'Slide to choose time interval.'
+		});
+	};
 	onMount(() => {
-		// append the svg object to the body of the page
-		const svg = d3.select(svg_node).append('g');
-
-		const words = count_data(data).slice(0, 50);
-		const scale_word = 64 / words[0].count;
-
-		// Constructs a new cloud layout instance. It run an algorithm to find the position of words that suits your requirements
-		// Wordcloud features that are different from one word to the other must be here
-		const layout = cloud()
-			.size([width, height])
-			.words(words)
-			.padding(5) //space between words
-			.rotate(() => ~~(Math.random() * 2) * 90)
-			.fontSize((d) => d.count * scale_word) // font size of words
-			.on('end', draw);
-		layout.start();
-
-		function card_follow(mouse_event: any, d: any) {
-			card.config({
-				visible: true,
-				title: d.text,
-				body: `${d.count} mensions`,
-				left: mouse_event.pageX,
-				top: mouse_event.pageY + 50
+		const g = d3.select(g_node);
+		const slider = d3
+			.select(slider_node)
+			.on('mouseover', card_follow_slider)
+			.on('mousemove', card_follow)
+			.on('mouseout', () => {
+				slider_opacity = 0;
+				card.config({ visible: false });
 			});
-		}
-		// This function takes the output of 'layout' above and draw the words
-		// Wordcloud features that are THE SAME from one word to the other can be here
-		function draw(words) {
-			svg
-				.append('g')
-				.attr('transform', `translate(${layout.size()[0] / 2},${layout.size()[1] / 2})`)
+
+		// Draw the word cloud.
+		const draw = (words: any) =>
+			g
 				.selectAll('text')
 				.data(words)
-				.enter()
-				.append('text')
-				.style('font-size', (d) => d.size)
+				.join('text')
+				.style('font-size', (d: any) => d.size)
 				.style('fill', fill)
 				.attr('text-anchor', 'middle')
 				.style('font-family', 'Impact')
-				.attr('transform', (d) => `translate(${[d.x, d.y]})rotate(${d.rotate})`)
-				.text((d) => d.text)
-				.on('mouseover', (_, d) => console.log(d))
+				.attr('transform', (d: any) => `translate(${[d.x, d.y]})rotate(${d.rotate})`)
+				.text((d: any) => d.text)
+				.on('mouseover', card_follow_word)
 				.on('mousemove', card_follow)
 				.on('mouseout', () => card.config({ visible: false }));
-		}
+		// Constructs a new cloud layout instance.
+		const layout = (words: any) =>
+			cloud()
+				.size([width, height])
+				.words(words)
+				.padding(5)
+				.rotate(() => ~~(Math.random() * 2) * 90)
+				.fontSize((d: any) => (d.count * 64) / words[0].count)
+				.on('end', draw)
+				.start();
+		// Slider
+		//@ts-ignore
+		const make_slider = sliderBottom()
+			//@ts-ignore
+			.min(8)
+			.max(end_day)
+			.step(1)
+			.width(width / 2)
+			.displayValue(false)
+			.tickPadding(-8)
+			.value(end_day)
+			.on('onchange', (d: number) => {
+				end_day = d;
+				card.config({
+					title: `Until Feb ${end_day}`
+				});
+				layout(count_till(new Date(2023, 1, end_day)));
+			});
+
+		const last_day = new Date(2023, 1, end_day);
+		slider.call(make_slider);
+		layout(count_till(last_day));
 	});
 </script>
 
-<svg bind:this={svg_node} {height} {width} />
+<svg {height} {width} xmlns="http://www.w3.org/2000/svg">
+	<g bind:this={g_node} style="transform: translate({width / 2}px, {height / 2}px);" />
+	<g
+		bind:this={slider_node}
+		style="transform: translate({width / 4}px, {height - 30}px); opacity: {slider_opacity}"
+	/>
+</svg>
 <QuakeCard bind:this={card} />
